@@ -1,0 +1,231 @@
+type {{ pk_field.gotype }} {{ pk_field.native_type }}
+
+type t{{ model_name }} struct {
+	lorm.BaseTable
+    preSave func(r *{{ model_name }}) error
+    getString func(r {{ model_name }}) string
+}
+{% for fw in all_fields %}func (t t{{ model_name }}) {{ fw.camelcased_attname|capfirst }}() op.Column { return t.Column("{{ fw.column }}") }
+{% endfor %}
+
+func (t t{{ model_name }}) Filter() *f{{ model_name }} { return new(f{{ model_name }}) }
+func (t t{{ model_name }}) MustGet(pk {{ model_name }}Pk) *{{ model_name }} { return t.Filter().{{ pk_field.camelcased_attname }}(pk).MustGet() }
+func (t t{{ model_name }}) As(v string) t{{ model_name }} { t.SetAlias(v); return t }
+
+func (t t{{ model_name }}) scanList(tx *lorm.Tx, query op.Query, args op.Args) (l {{ model_name }}List, err error) {
+	err = lorm.TxQuery(tx, query, args, func(rows *sql.Rows) error {
+		r := new({{ model_name }})
+		if err := rows.Scan(r.GetAllFields()...); err != nil {
+			return err
+		}
+        lorm.MaybeAddToTx(tx, r)
+		l = append(l, r)
+		return nil
+	})
+	return l, err
+}
+
+func (t t{{ model_name }}) scanPks(tx *lorm.Tx, query op.Query, args op.Args) (pks []{{ model_name }}Pk, err error) {
+	err = lorm.TxQuery(tx, query, args, func(rows *sql.Rows) error {
+		var pk {{ model_name }}Pk
+		if err := rows.Scan(&pk); err != nil {
+			return err
+		}
+		pks = append(pks, pk)
+		return nil
+	})
+	return pks, err
+}
+
+var {{ model_name }}Table = t{{ model_name }} {
+    BaseTable: lorm.NewBaseTable("{{ table_name }}", "{{ model_name }}"{% for fw in all_fields %}, "{{ fw.column }}"{% endfor %}),
+    preSave: func(*{{ model_name }}) error { return nil },
+    getString: func(r {{ model_name }}) string { return fmt.Sprintf("{{ model_name }}({{ pk_field.column }}: %v)", r.{{ pk_field.camelcased_attname }}) },
+}
+
+type {{ model_name }} struct {
+    lorm.BaseTransactional
+    {% for fw in all_fields %}{{ fw.camelcased_attname }} {{ fw.gotype }} {% comment %} `db:"{{ fw.column }}"` {{ maybecomment }} {% endcomment %}
+    {% endfor %}
+}
+
+func (r {{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
+func (r {{ model_name }}) PkCond(args *op.Args) op.Expr { return r.t().Pk().Equal(args.Next(r.Pk())) }
+func (r *{{ model_name }}) GetAllFields() []interface{} { return []interface{}{ {% for fw in all_fields %} &r.{{ fw.camelcased_attname }} {% if not forloop.last %},{% endif %}{% endfor %} } }
+
+func (r {{ model_name }}) String() string  { return r.t().getString(r) }
+func (r {{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_attname }} != *new({{ pk_field.gotype }}) }
+func (r {{ model_name }}) Pk() {{ pk_field.gotype }} {
+    if !r.HasPk() {
+		log.Panicln("{{ model_name }} must have primary key")
+	}
+    return r.{{ pk_field.camelcased_attname }}
+}
+
+func (r *{{ model_name }}) Delete() error { return lorm.DoDelete(r, r.t()) }
+{% if non_pk_fieldslist %}func (r *{{ model_name }}) Reload() error { return lorm.DoReload(r, r.t()) }
+func (r *{{ model_name }}) Save() error { return lorm.DoSaveall(r.t().preSave(r), r, r.t()) }
+
+func (r *{{ model_name }}) Updater() {{ model_name }}Updater { return {{ model_name }}Updater{r: r, BaseUpdater: lorm.NewUpdater()} }
+
+type {{ model_name }}Updater struct {
+    lorm.BaseUpdater
+    r *{{ model_name }}
+}
+
+func (u {{ model_name }}Updater) Tx() *lorm.Tx { return u.r.Tx() }
+func (u *{{ model_name }}Updater) SetTx(tx *lorm.Tx) { u.r.SetTx(tx) }
+func (u *{{ model_name }}Updater) Record() *{{ model_name }} { return u.r }
+func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t()) }
+
+{% for fw in all_fields %}{% if not fw.primary_key %} func (u *{{ model_name }}Updater) Set{{ fw.camelcased_attname|capfirst }}(v {{ fw.gotype }}) { u.r.{{ fw.camelcased_attname|capfirst }} = v; u.Ch(u.r.t().{{ fw.camelcased_attname|capfirst }}(), v) }
+{% endif %}{% endfor %}
+{% endif %}
+type {{ model_name }}List []*{{ model_name }}
+
+func (l {{ model_name }}List) t() *t{{ model_name }} { return &{{ model_name }}Table }
+
+func (l {{ model_name }}List) Pks() (pks []{{ model_name }}Pk) {
+    for _, r := range l {
+        pks = append(pks, r.Pk())
+    }
+    return pks
+}
+
+func (l {{ model_name }}List) Delete() error {
+    if len(l) > 0 {
+        args := op.NewArgs()
+        query := op.Delete(l.t()).Where(l.t().Pk().Any(args.NextArray(l.Pks())))
+        if _, err := lorm.TxExec(l.Tx(), query, args); err != nil {
+            return errors.WithStack(err)
+        }
+    }
+	return nil
+}
+
+func (l {{ model_name }}List) Tx() *lorm.Tx {
+	byTx := make(map[*lorm.Tx]bool)
+	for _, r := range l {
+		byTx[r.Tx()] = true
+	}
+	if len(byTx) > 1 {
+		log.Panicln("invalid transaction number:", len(byTx))
+	}
+	for tx := range byTx {
+		return tx
+	}
+	return nil
+}
+
+func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
+	for _, r := range l {
+		r.SetTx(tx)
+	}
+}
+
+{% for field in all_fields %}{% if field.is_same_app_fk %}
+func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() (uniq []{{ field.rel_classname }}Pk) {
+	ids := make(map[{{ field.rel_classname }}Pk]bool)
+	for _, item := range l {
+        {% if field.null %}if item.{{ field.camelcased_attname }} != nil {
+            ids[*item.{{ field.camelcased_attname }}] = true
+        }{% else %}ids[item.{{ field.camelcased_attname }}] = true{% endif %}
+	}
+	for id := range ids {
+		uniq = append(uniq, id)
+	}
+	return uniq
+}
+{% endif %}{% endfor %}
+
+type f{{ model_name }} struct { lorm.BaseFilter }
+
+func (f f{{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
+
+func (f *f{{ model_name }}) MustGet() *{{ model_name }} {
+    r, err := f.Get()
+    if err != nil {
+		log.Panicln(errors.Wrapf(err, "%s.Get() fail", f.t()))
+	}
+    return r
+}
+
+func (f *f{{ model_name }}) Get() (*{{ model_name }}, error) {
+	r := new({{ model_name }})
+	found, err := lorm.DoGet(f, r, f.t())
+	if !found {
+		r = nil
+	}
+	return r, err
+}
+
+func (f *f{{ model_name }}) Count() int    { return lorm.DoCount(f, f.t()) }
+func (f *f{{ model_name }}) Exists() bool  { return lorm.DoExists(f, f.t()) }
+func (f *f{{ model_name }}) Delete() error { return lorm.DoDeleteFiltered(f, f.t()) }
+
+func (f f{{ model_name }}) MustList() {{ model_name }}List {
+    l, err := f.List()
+    if err != nil {
+		log.Panicln(errors.Wrapf(err, "%s.List() fail", f.t()))
+	}
+    return l
+}
+
+func (f *f{{ model_name }}) List() (l {{ model_name }}List, err error) {
+    if f.IsEmpty() {
+        return l, nil
+    }
+    query := op.Select().From(f.t()).Where(f.Conds).Lock(f.GetLock()).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
+	return f.t().scanList(f.Tx(), query, f.Args)
+}
+
+func (f *f{{ model_name }}) PkList() []{{ pk_field.gotype }} {
+    if f.IsEmpty() {
+        return []{{ pk_field.gotype }}{}
+    }
+    query := op.Select(f.t().Pk()).From(f.t()).Where(f.Conds).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
+    pks, err := f.t().scanPks(f.Tx(), query, f.Args)
+    if err != nil {
+        log.Panicln(errors.Wrapf(err, "%s.Pks() fail on %s and %v", f.t(), query, f.Args))
+    }
+    return pks
+}
+
+func (f f{{ model_name }}) OrderBy(v op.Expr) *f{{ model_name }}        { f.SetOrderBy(v); return &f }
+func (f f{{ model_name }}) Limit(v int) *f{{ model_name }}              { f.SetLimit(v); return &f }
+func (f f{{ model_name }}) ForUpdate(tx *lorm.Tx) *f{{ model_name }}      { f.SetLock(tx, op.ForUpdate); return &f }
+func (f f{{ model_name }}) ForNoKeyUpdate(tx *lorm.Tx) *f{{ model_name }} { f.SetLock(tx, op.ForNoKeyUpdate); return &f }
+
+{% for field in all_fields %}
+{% if field.is_comparable %}
+func (f f{{ model_name }}) {{ field.camelcased_attname }}Gt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Gt(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_attname }}Lt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Lt(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_attname }}Gte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Gte(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_attname }}Lte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Lte(f.Args.Next(v))); return &f }
+{% endif %}{% if field.has_indexes or field.gotype == 'bool' %}
+func (f f{{ model_name }}) {{ field.camelcased_attname }}(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Equal(f.Args.Next(v))); return &f }
+{% if field.gotype != 'bool' %}func (f f{{ model_name }}) {{ field.camelcased_attname }}Not(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().NotEqual(f.Args.Next(v))); return &f }{% endif %}
+{% endif %}
+
+{% if field.has_indexes %}
+func (f f{{ model_name }}) {{ field.camelcased_attname }}In(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
+    if len(l) == 0 {
+        f.SetEmpty()
+    } else {
+        f.Conds.Add(f.t().{{ field.camelcased_attname }}().Any(f.Args.NextArray(l)))
+    }
+    return &f
+}
+func (f f{{ model_name }}) {{ field.camelcased_attname }}NotIn(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
+    if len(l) > 0 {
+        f.Conds.Add(f.t().{{ field.camelcased_attname }}().NotAny(f.Args.NextArray(l)))
+    }
+    return &f
+}
+{% endif %}
+
+{% if field.null %}func (f f{{ model_name }}) {{ field.camelcased_attname }}IsNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().IsNull()); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_attname }}IsNotNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().IsNotNull()); return &f }
+{% endif %}
+
+{% endfor %}

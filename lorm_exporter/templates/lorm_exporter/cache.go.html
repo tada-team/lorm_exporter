@@ -1,0 +1,72 @@
+{% if not intermediate_table %}
+type {{ model_name }}Cache interface {
+	{{ model_name }}({{ model_name }}Pk) *{{ model_name }}
+	Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}({{ model_name }}List)
+	ExcludeLoaded{{ model_name }}Ids([]{{ model_name }}Pk) []{{ model_name }}Pk
+    {% for field in all_fields %}{% if field.one_to_one %}{{ model_name }}By{{ field.camelcased_column }}({{ field.gotype_nopointer }}) *{{ model_name }}
+    {% endif %}{% endfor %}
+}
+
+type Simple{{ model_name }}Cache struct {
+    lorm.BaseCache
+    byPk map[{{ model_name }}Pk]*{{ model_name }}{% for field in all_fields %}{% if field.one_to_one %}
+    by{{ field.camelcased_column }} map[{{ field.gotype_nopointer }}]*{{ model_name }}{% endif %}{% endfor %}
+}
+
+func (c *Simple{{ model_name }}Cache) init() {
+    if c.byPk == nil {
+        c.byPk = make(map[{{ model_name }}Pk]*{{ model_name }}){% for field in all_fields %}{% if field.one_to_one %}
+        c.by{{ field.camelcased_column }} = make(map[{{ field.gotype_nopointer }}]*{{ model_name }}){% endif %}{% endfor %}
+    }
+}
+
+func (c *Simple{{ model_name }}Cache) {{ model_name }}(key {{ model_name }}Pk) *{{ model_name }} {
+    c.init()
+	if res, ok := c.byPk[key]; ok {
+        return res
+    }
+    c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}({{ model_name }}Table.Filter().{{ pk_field.camelcased_attname|capfirst }}(key).MustList())
+	return c.byPk[key]
+}
+
+func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l {{ model_name }}List) {
+    c.init()
+    c.Lock()
+	for _, v := range l {
+		c.byPk[v.Pk()] = v{% for field in all_fields %}{% if field.one_to_one %}{% if field.is_pointer %}
+        if v.{{ field.camelcased_attname }} != nil {
+            c.by{{ field.camelcased_column }}[*v.{{ field.camelcased_attname }}] = v
+        }{% else %}
+        c.by{{ field.camelcased_column }}[v.{{ field.camelcased_attname }}] = v
+        {% endif %}{% endif %}{% endfor %}
+	}
+    c.Unlock()
+}
+
+func (c *Simple{{ model_name }}Cache) ExcludeLoaded{{ model_name }}Ids(ids []{{ model_name }}Pk) []{{ model_name }}Pk {
+    c.init()
+    c.Lock()
+	res := make([]{{ model_name }}Pk, 0)
+	for _, id := range ids {
+		if _, ok := c.byPk[id]; !ok {
+			res = append(res, id)
+		}
+	}
+    c.Unlock()
+	return res
+}
+
+{% for field in all_fields %}
+    {% if field.one_to_one %}
+        func (c *Simple{{ model_name }}Cache) {{ model_name }}By{{ field.camelcased_column }}(key {{ field.gotype_nopointer }}) *{{ model_name }} {
+            c.init()
+            if res, ok := c.by{{ field.camelcased_column }}[key]; ok {
+                return res
+            }
+            c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}({{ model_name }}Table.Filter().{{ field.camelcased_column }}(key).MustList())
+            return c.by{{ field.camelcased_column }}[key]
+        }
+    {% endif %}
+{% endfor %}
+
+{% endif %}
