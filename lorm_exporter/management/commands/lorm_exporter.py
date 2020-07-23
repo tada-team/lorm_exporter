@@ -167,7 +167,7 @@ def go_flush(labels, package):
                 'insert_fields': ', '.join(f.column for f in non_pk_fields),
                 'insert_mask': ', '.join(
                     '${}'.format(i)
-                    for i, _ in enumerate(non_pk_fields, start=1),
+                    for i, _ in enumerate(non_pk_fields, start=1)
                 ),
                 'non_pk_fieldslist': mark_safe(', '.join(
                     'row.{}'.format(
