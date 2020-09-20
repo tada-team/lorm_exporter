@@ -34,3 +34,7 @@ or
 ```bash
 go fmt models.go
 ```
+
+## Use from go code
+
+See https://github.com/tada-team/lorm
