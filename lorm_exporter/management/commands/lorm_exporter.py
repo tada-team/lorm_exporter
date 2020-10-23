@@ -9,7 +9,7 @@ from django.db.models import IntegerField, BigIntegerField, BinaryField, \
     PositiveIntegerField, PositiveSmallIntegerField, DateTimeField, \
     NullBooleanField, BooleanField, FilePathField, FloatField, SlugField, \
     URLField, UUIDField, AutoField, ImageField, ForeignKey, \
-    GenericIPAddressField
+    GenericIPAddressField, FileField
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from django.utils.text import capfirst
@@ -251,6 +251,7 @@ def go_type(field, *, produce_pk=True):
         SlugField,
         URLField,
         ImageField,
+        FileField
     )):
         t = 'string'
     elif isinstance(field, (DateField, TimeField, DateTimeField)):
