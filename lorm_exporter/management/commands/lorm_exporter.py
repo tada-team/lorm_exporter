@@ -138,11 +138,15 @@ def go_flush(labels, package):
 
             fields = []
             pk_field = None
+            new_pk_func = ''
             for f in meta.get_fields():
                 if hasattr(f, 'attname') and not hasattr(f, 'm2m_column_name'):
                     fw = FieldWrapper(f, labels)
                     if getattr(f, 'primary_key', None):
                         pk_field = fw
+                        if isinstance(f, UUIDField):
+                            new_pk_func = 'uuid.New().String()'
+                            imports.add('github.com/google/uuid')
                     fields.append(fw)
             assert pk_field
 
@@ -156,6 +160,7 @@ def go_flush(labels, package):
             model_name = m.__name__
             model_name = to_camelcase(model_name)
             s = render_to_string('lorm_exporter/model.go.html', {
+                'new_pk_func': new_pk_func,
                 'model_name': model_name,
                 'table_name': meta.db_table,
                 'pk_field': pk_field,
@@ -204,7 +209,7 @@ def go_type(field, *, produce_pk=True):
     prefix = ''
     if field.null:
         prefix = '*'
-    t = "interface{}"
+    t = 'interface{}'
     type_import = None
     if field.primary_key and produce_pk:
         t = pk(field.model)
@@ -256,7 +261,7 @@ def go_type(field, *, produce_pk=True):
         t = 'string'
     elif isinstance(field, (DateField, TimeField, DateTimeField)):
         t = 'time.Time'
-        type_import = "time"
+        type_import = 'time'
     return prefix + t, type_import
 
 
