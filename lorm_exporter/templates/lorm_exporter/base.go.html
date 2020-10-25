@@ -61,7 +61,7 @@ func (r {{ model_name }}) Pk() {{ pk_field.gotype }} {
 	}
     return r.{{ pk_field.camelcased_attname }}
 }
-func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_attname }} = {{ new_pk_func }};{% endif %} }
+func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_attname }} = {{ model_name }}Pk({{ new_pk_func }});{% endif %} }
 
 func (r *{{ model_name }}) Delete() error { return lorm.DoDelete(r, r.t()) }
 {% if non_pk_fieldslist %}func (r *{{ model_name }}) Reload() error { return lorm.DoReload(r, r.t()) }
