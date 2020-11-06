@@ -86,9 +86,10 @@ type {{ model_name }}List []*{{ model_name }}
 
 func (l {{ model_name }}List) t() *t{{ model_name }} { return &{{ model_name }}Table }
 
-func (l {{ model_name }}List) Pks() (pks []{{ model_name }}Pk) {
-    for _, r := range l {
-        pks = append(pks, r.Pk())
+func (l {{ model_name }}List) Pks() []{{ model_name }}Pk {
+    pks := make([]{{ model_name }}Pk, len(l))
+    for i, r := range l {
+        pks[i] = r.Pk()
     }
     return pks
 }
@@ -125,13 +126,14 @@ func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
 }
 
 {% for field in all_fields %}{% if field.is_same_app_fk %}
-func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() (uniq []{{ field.rel_classname }}Pk) {
-	ids := make(map[{{ field.rel_classname }}Pk]bool)
+func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() []{{ field.rel_classname }}Pk {
+	ids := make(map[{{ field.rel_classname }}Pk]bool, len(l))
 	for _, item := range l {
         {% if field.null %}if item.{{ field.camelcased_attname }} != nil {
             ids[*item.{{ field.camelcased_attname }}] = true
         }{% else %}ids[item.{{ field.camelcased_attname }}] = true{% endif %}
 	}
+	uniq := make([]{{ field.rel_classname }}Pk, 0, len(ids))
 	for id := range ids {
 		uniq = append(uniq, id)
 	}
