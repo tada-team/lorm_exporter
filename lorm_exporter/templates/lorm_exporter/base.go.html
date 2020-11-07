@@ -106,9 +106,9 @@ func (l {{ model_name }}List) Delete() error {
 }
 
 func (l {{ model_name }}List) Tx() *lorm.Tx {
-	byTx := make(map[*lorm.Tx]bool)
+	byTx := make(map[*lorm.Tx]struct{})
 	for _, r := range l {
-		byTx[r.Tx()] = true
+		byTx[r.Tx()] = struct{}{}
 	}
 	if len(byTx) > 1 {
 		log.Panicln("invalid transaction number:", len(byTx))
@@ -127,11 +127,11 @@ func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
 
 {% for field in all_fields %}{% if field.is_same_app_fk %}
 func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() []{{ field.rel_classname }}Pk {
-	ids := make(map[{{ field.rel_classname }}Pk]bool, len(l))
+	ids := make(map[{{ field.rel_classname }}Pk]struct{}, len(l))
 	for _, item := range l {
         {% if field.null %}if item.{{ field.camelcased_attname }} != nil {
-            ids[*item.{{ field.camelcased_attname }}] = true
-        }{% else %}ids[item.{{ field.camelcased_attname }}] = true{% endif %}
+            ids[*item.{{ field.camelcased_attname }}] = struct{}{}
+        }{% else %}ids[item.{{ field.camelcased_attname }}] = struct{}{}{% endif %}
 	}
 	uniq := make([]{{ field.rel_classname }}Pk, 0, len(ids))
 	for id := range ids {
