@@ -3,7 +3,7 @@ type {{ pk_field.gotype }} {{ pk_field.native_type }}
 type t{{ model_name }} struct {
 	lorm.BaseTable
     preSave func(r *{{ model_name }}) error
-    getString func(r {{ model_name }}) string
+    getString func(r *{{ model_name }}) string
 }
 {% for fw in all_fields %}func (t t{{ model_name }}) {{ fw.camelcased_attname|capfirst }}() op.Column { return t.Column("{{ fw.column }}") }
 {% endfor %}
@@ -40,7 +40,7 @@ func (t t{{ model_name }}) scanPks(tx *lorm.Tx, query op.Query, args op.Args) (p
 var {{ model_name }}Table = t{{ model_name }} {
     BaseTable: lorm.NewBaseTable("{{ table_name }}", "{{ model_name }}"{% for fw in all_fields %}, "{{ fw.column }}"{% endfor %}),
     preSave: func(*{{ model_name }}) error { return nil },
-    getString: func(r {{ model_name }}) string { return fmt.Sprintf("{{ model_name }}({{ pk_field.column }}: %v)", r.{{ pk_field.camelcased_attname }}) },
+    getString: func(r *{{ model_name }}) string { return fmt.Sprintf("{{ model_name }}({{ pk_field.column }}: %v)", r.{{ pk_field.camelcased_attname }}) },
 }
 
 type {{ model_name }} struct {
@@ -49,13 +49,13 @@ type {{ model_name }} struct {
     {% endfor %}
 }
 
-func (r {{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
-func (r {{ model_name }}) PkCond(args *op.Args) op.Expr { return r.t().Pk().Equal(args.Next(r.Pk())) }
+func (r *{{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
+func (r *{{ model_name }}) PkCond(args *op.Args) op.Expr { return r.t().Pk().Equal(args.Next(r.Pk())) }
 func (r *{{ model_name }}) GetAllFields() []interface{} { return []interface{}{ {% for fw in all_fields %} &r.{{ fw.camelcased_attname }} {% if not forloop.last %},{% endif %}{% endfor %} } }
 
-func (r {{ model_name }}) String() string  { return r.t().getString(r) }
-func (r {{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_attname }} != *new({{ pk_field.gotype }}) }
-func (r {{ model_name }}) Pk() {{ pk_field.gotype }} {
+func (r *{{ model_name }}) String() string  { return r.t().getString(r) }
+func (r *{{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_attname }} != *new({{ pk_field.gotype }}) }
+func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} {
     if !r.HasPk() {
 		log.Panicln("{{ model_name }} must have primary key")
 	}
