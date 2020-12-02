@@ -20,13 +20,19 @@ func (c *Simple{{ model_name }}Cache) init(size int) {
 }
 
 func (c *Simple{{ model_name }}Cache) {{ model_name }}(key {{ model_name }}Pk) *{{ model_name }} {
-	if res, ok := c.byPk[key]; ok {
+    if res := get{{ model_name }}[key]; res != nil {
         return res
     }
     l := {{ model_name }}Table.Filter().{{ pk_field.camelcased_attname|capfirst }}(key).MustList()
     c.init(len(l))
     c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
-	return c.byPk[key]
+    return get{{ model_name }}[key]
+}
+
+func (c *Simple{{ model_name }}Cache) get{{ model_name }}(key {{ model_name }}Pk) *{{ model_name }} {
+    c.RLock()
+    defer c.RUnlock()
+    return c.byPk[key]
 }
 
 func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l {{ model_name }}List) {
