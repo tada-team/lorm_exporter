@@ -20,13 +20,13 @@ func (c *Simple{{ model_name }}Cache) init(size int) {
 }
 
 func (c *Simple{{ model_name }}Cache) {{ model_name }}(key {{ model_name }}Pk) *{{ model_name }} {
-    if res := get{{ model_name }}[key]; res != nil {
+    if res := get{{ model_name }}(key); res != nil {
         return res
     }
     l := {{ model_name }}Table.Filter().{{ pk_field.camelcased_attname|capfirst }}(key).MustList()
     c.init(len(l))
     c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
-    return get{{ model_name }}[key]
+    return get{{ model_name }}(key)
 }
 
 func (c *Simple{{ model_name }}Cache) get{{ model_name }}(key {{ model_name }}Pk) *{{ model_name }} {
@@ -38,6 +38,7 @@ func (c *Simple{{ model_name }}Cache) get{{ model_name }}(key {{ model_name }}Pk
 func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l {{ model_name }}List) {
     c.init(len(l))
     c.Lock()
+    defer c.Unlock()
 	for _, v := range l {
 		c.byPk[v.Pk()] = v{% for field in all_fields %}{% if field.one_to_one %}{% if field.is_pointer %}
         if v.{{ field.camelcased_attname }} != nil {
@@ -46,19 +47,24 @@ func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name
         c.by{{ field.camelcased_column }}[v.{{ field.camelcased_attname }}] = v
         {% endif %}{% endif %}{% endfor %}
 	}
-    c.Unlock()
 }
 
 {% for field in all_fields %}
     {% if field.one_to_one %}
+        func (c *Simple{{ model_name }}Cache) get{{ model_name }}By{{ field.camelcased_column }}(key {{ field.gotype_nopointer }}) *{{ model_name }} {
+            c.RLock()
+            defer c.RUnlock()
+            return c.by{{ field.camelcased_column }}[key]
+        }
+
         func (c *Simple{{ model_name }}Cache) {{ model_name }}By{{ field.camelcased_column }}(key {{ field.gotype_nopointer }}) *{{ model_name }} {
-            if res, ok := c.by{{ field.camelcased_column }}[key]; ok {
+            if res := get{{ model_name }}By{{ field.camelcased_column }}(key); res != nil {
                 return res
             }
             l := {{ model_name }}Table.Filter().{{ field.camelcased_column }}(key).MustList()
             c.init(len(l))
             c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
-            return c.by{{ field.camelcased_column }}[key]
+            return get{{ model_name }}By{{ field.camelcased_column }}(key)
         }
     {% endif %}
 {% endfor %}
