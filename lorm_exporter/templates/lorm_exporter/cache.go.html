@@ -20,13 +20,13 @@ func (c *Simple{{ model_name }}Cache) init(size int) {
 }
 
 func (c *Simple{{ model_name }}Cache) {{ model_name }}(key {{ model_name }}Pk) *{{ model_name }} {
-    if res := get{{ model_name }}(key); res != nil {
+    if res := c.get{{ model_name }}(key); res != nil {
         return res
     }
     l := {{ model_name }}Table.Filter().{{ pk_field.camelcased_attname|capfirst }}(key).MustList()
     c.init(len(l))
     c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
-    return get{{ model_name }}(key)
+    return c.get{{ model_name }}(key)
 }
 
 func (c *Simple{{ model_name }}Cache) get{{ model_name }}(key {{ model_name }}Pk) *{{ model_name }} {
@@ -51,20 +51,20 @@ func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name
 
 {% for field in all_fields %}
     {% if field.one_to_one %}
-        func (c *Simple{{ model_name }}Cache) get{{ model_name }}By{{ field.camelcased_column }}(key {{ field.gotype_nopointer }}) *{{ model_name }} {
-            c.RLock()
-            defer c.RUnlock()
-            return c.by{{ field.camelcased_column }}[key]
-        }
-
         func (c *Simple{{ model_name }}Cache) {{ model_name }}By{{ field.camelcased_column }}(key {{ field.gotype_nopointer }}) *{{ model_name }} {
-            if res := get{{ model_name }}By{{ field.camelcased_column }}(key); res != nil {
+            if res := c.get{{ model_name }}By{{ field.camelcased_column }}(key); res != nil {
                 return res
             }
             l := {{ model_name }}Table.Filter().{{ field.camelcased_column }}(key).MustList()
             c.init(len(l))
             c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
-            return get{{ model_name }}By{{ field.camelcased_column }}(key)
+            return c.get{{ model_name }}By{{ field.camelcased_column }}(key)
+        }
+
+        func (c *Simple{{ model_name }}Cache) get{{ model_name }}By{{ field.camelcased_column }}(key {{ field.gotype_nopointer }}) *{{ model_name }} {
+            c.RLock()
+            defer c.RUnlock()
+            return c.by{{ field.camelcased_column }}[key]
         }
     {% endif %}
 {% endfor %}
