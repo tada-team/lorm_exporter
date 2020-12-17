@@ -98,17 +98,11 @@ func (l {{ model_name }}List) Delete() error {
 }
 
 func (l {{ model_name }}List) Tx() *lorm.Tx {
-	byTx := make(map[*lorm.Tx]struct{})
+	byTx := make(map[*lorm.Tx]struct{}, 1)
 	for _, r := range l {
 		byTx[r.Tx()] = struct{}{}
 	}
-	if len(byTx) > 1 {
-		log.Panicln("invalid transaction number:", len(byTx))
-	}
-	for tx := range byTx {
-		return tx
-	}
-	return nil
+	return lorm.ChooseOneTx(byTx)
 }
 
 func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
