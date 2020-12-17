@@ -52,21 +52,13 @@ type {{ model_name }} struct {
 func (r *{{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
 func (r *{{ model_name }}) PkCond(args *op.Args) op.Expr { return r.t().Pk().Equal(args.Next(r.Pk())) }
 func (r *{{ model_name }}) GetAllFields() []interface{} { return []interface{}{ {% for fw in all_fields %} &r.{{ fw.camelcased_attname }} {% if not forloop.last %},{% endif %}{% endfor %} } }
-
 func (r *{{ model_name }}) String() string  { return r.t().getString(r) }
 func (r *{{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_attname }} != *new({{ pk_field.gotype }}) }
-func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} {
-    if !r.HasPk() {
-		log.Panicln("{{ model_name }} must have primary key")
-	}
-    return r.{{ pk_field.camelcased_attname }}
-}
+func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} { lorm.MustHavePk(r); return r.{{ pk_field.camelcased_attname }} }
 func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_attname }} = {{ model_name }}Pk({{ new_pk_func }});{% endif %} }
-
 func (r *{{ model_name }}) Delete() error { return lorm.DoDelete(r, r.t()) }
 {% if non_pk_fieldslist %}func (r *{{ model_name }}) Reload() error { return lorm.DoReload(r, r.t()) }
 func (r *{{ model_name }}) Save() error { return lorm.DoSaveall(r.t().preSave(r), r, r.t()) }
-
 func (r *{{ model_name }}) Updater() {{ model_name }}Updater { return {{ model_name }}Updater{r: r, BaseUpdater: lorm.NewUpdater()} }
 
 type {{ model_name }}Updater struct {
@@ -74,7 +66,7 @@ type {{ model_name }}Updater struct {
     r *{{ model_name }}
 }
 
-func (u {{ model_name }}Updater) Tx() *lorm.Tx { return u.r.Tx() }
+func (u *{{ model_name }}Updater) Tx() *lorm.Tx { return u.r.Tx() }
 func (u *{{ model_name }}Updater) SetTx(tx *lorm.Tx) { u.r.SetTx(tx) }
 func (u *{{ model_name }}Updater) Record() *{{ model_name }} { return u.r }
 func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t()) }
@@ -128,10 +120,10 @@ func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
 {% for field in all_fields %}{% if field.is_same_app_fk %}
 func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() []{{ field.rel_classname }}Pk {
 	ids := make(map[{{ field.rel_classname }}Pk]struct{}, len(l))
-	for _, item := range l {
-        {% if field.null %}if item.{{ field.camelcased_attname }} != nil {
-            ids[*item.{{ field.camelcased_attname }}] = struct{}{}
-        }{% else %}ids[item.{{ field.camelcased_attname }}] = struct{}{}{% endif %}
+	for _, r := range l {
+        {% if field.null %}if r.{{ field.camelcased_attname }} != nil {
+            ids[*r.{{ field.camelcased_attname }}] = struct{}{}
+        }{% else %}ids[r.{{ field.camelcased_attname }}] = struct{}{}{% endif %}
 	}
 	uniq := make([]{{ field.rel_classname }}Pk, 0, len(ids))
 	for id := range ids {
