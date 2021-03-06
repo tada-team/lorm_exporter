@@ -164,7 +164,7 @@ func (f *f{{ model_name }}) List() (l {{ model_name }}List, err error) {
     if f.IsEmpty() {
         return l, nil
     }
-    query := op.Select().From(f.t()).Where(f.Conds).Lock(f.GetLock()).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
+    query := lorm.CachedSelect(f.t()).Where(f.Conds).Lock(f.GetLock()).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
 	return f.t().scanList(f.Tx(), query, f.Args)
 }
 
