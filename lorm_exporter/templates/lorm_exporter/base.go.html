@@ -217,9 +217,9 @@ func (f f{{ model_name }}) {{ field.camelcased_attname }}IsNotNull() *f{{ model_
 
 type {{ model_name }}PkSet map[{{ model_name }}Pk]struct{}
 
-func (s {{ model_name }}Pk) Add(id {{ model_name }}Pk)           { s[id] = struct{}{} }
-func (s {{ model_name }}Pk) Contains(id {{ model_name }}Pk) bool { _, ok := s[id]; return ok }
-func (s {{ model_name }}Pk) AsList() []{{ model_name }}Pk {
+func (s {{ model_name }}PkSet) Add(id {{ model_name }}Pk)           { s[id] = struct{}{} }
+func (s {{ model_name }}PkSet) Contains(id {{ model_name }}Pk) bool { _, ok := s[id]; return ok }
+func (s {{ model_name }}PkSet) AsList() []{{ model_name }}Pk {
 	ids := make([]{{ model_name }}Pk, 0, len(s))
 	for id := range s {
 		ids = append(ids, id)
