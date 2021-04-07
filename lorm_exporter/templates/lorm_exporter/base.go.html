@@ -113,17 +113,13 @@ func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
 
 {% for field in all_fields %}{% if field.is_same_app_fk %}
 func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() []{{ field.rel_classname }}Pk {
-	ids := make(map[{{ field.rel_classname }}Pk]struct{}, len(l))
+	idSet := make({{ field.rel_classname }}PkSet, len(l))
 	for _, r := range l {
         {% if field.null %}if r.{{ field.camelcased_attname }} != nil {
-            ids[*r.{{ field.camelcased_attname }}] = struct{}{}
-        }{% else %}ids[r.{{ field.camelcased_attname }}] = struct{}{}{% endif %}
+            idSet.Add(*r.{{ field.camelcased_attname }})
+        }{% else %}idSet.Add(r.{{ field.camelcased_attname }}){% endif %}
 	}
-	uniq := make([]{{ field.rel_classname }}Pk, 0, len(ids))
-	for id := range ids {
-		uniq = append(uniq, id)
-	}
-	return uniq
+	return idSet.AsList()
 }
 {% endif %}{% endfor %}
 
@@ -218,3 +214,15 @@ func (f f{{ model_name }}) {{ field.camelcased_attname }}IsNotNull() *f{{ model_
 {% endif %}
 
 {% endfor %}
+
+type {{ model_name }}PkSet map[{{ model_name }}Pk]struct{}
+
+func (s {{ model_name }}Pk) Add(id {{ model_name }}Pk)           { s[id] = struct{}{} }
+func (s {{ model_name }}Pk) Contains(id {{ model_name }}Pk) bool { _, ok := s[id]; return ok }
+func (s {{ model_name }}Pk) AsList() []{{ model_name }}Pk {
+	ids := make([]{{ model_name }}Pk, 0, len(s))
+	for id := range s {
+		ids = append(ids, id)
+	}
+	return ids
+}
