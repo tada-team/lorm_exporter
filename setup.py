@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='lorm_exporter',
-    version='0.7.1',
+    version='0.8.0',
     url='https://github.com/tada-team/lorm_exporter',
     packages=find_packages(),
     package_data={
