@@ -24,7 +24,7 @@ func (c *Simple{{ model_name }}Cache) {{ model_name }}(key {{ model_name }}Pk) *
         return res
     }
     lorm.CacheUsed("Simple{{ model_name }}Cache.{{ model_name }}()")
-    l := {{ model_name }}Table.Filter().{{ pk_field.camelcased_attname|capfirst }}(key).MustList()
+    l := {{ model_name }}Table.Filter().{{ pk_field.camelcased_column|capfirst }}(key).MustList()
     c.init(len(l))
     c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
     return c.get{{ model_name }}(key)
@@ -42,10 +42,10 @@ func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name
     defer c.Unlock()
 	for _, v := range l {
 		c.byPk[v.Pk()] = v{% for field in all_fields %}{% if field.one_to_one %}{% if field.is_pointer %}
-        if v.{{ field.camelcased_attname }} != nil {
-            c.by{{ field.camelcased_column }}[*v.{{ field.camelcased_attname }}] = v
+        if v.{{ field.camelcased_column }} != nil {
+            c.by{{ field.camelcased_column }}[*v.{{ field.camelcased_column }}] = v
         }{% else %}
-        c.by{{ field.camelcased_column }}[v.{{ field.camelcased_attname }}] = v
+        c.by{{ field.camelcased_column }}[v.{{ field.camelcased_column }}] = v
         {% endif %}{% endif %}{% endfor %}
 	}
 }

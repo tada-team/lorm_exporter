@@ -5,11 +5,11 @@ type t{{ model_name }} struct {
     preSave func(r *{{ model_name }}) error
     getString func(r *{{ model_name }}) string
 }
-{% for fw in all_fields %}func (t t{{ model_name }}) {{ fw.camelcased_attname|capfirst }}() op.Column { return t.Column("{{ fw.column }}") }
+{% for fw in all_fields %}func (t t{{ model_name }}) {{ fw.camelcased_column|capfirst }}() op.Column { return t.Column("{{ fw.column }}") }
 {% endfor %}
 
 func (t t{{ model_name }}) Filter() *f{{ model_name }} { return new(f{{ model_name }}) }
-func (t t{{ model_name }}) MustGet(pk {{ model_name }}Pk) *{{ model_name }} { return t.Filter().{{ pk_field.camelcased_attname }}(pk).MustGet() }
+func (t t{{ model_name }}) MustGet(pk {{ model_name }}Pk) *{{ model_name }} { return t.Filter().{{ pk_field.camelcased_column }}(pk).MustGet() }
 func (t t{{ model_name }}) As(v string) t{{ model_name }} { t.SetAlias(v); return t }
 
 func (t t{{ model_name }}) scanList(tx *lorm.Tx, query op.Query, args op.Args) (l {{ model_name }}List, err error) {
@@ -40,22 +40,22 @@ func (t t{{ model_name }}) scanPks(tx *lorm.Tx, query op.Query, args op.Args) (p
 var {{ model_name }}Table = t{{ model_name }} {
     BaseTable: lorm.NewBaseTable("{{ table_name }}", "{{ model_name }}"{% for fw in all_fields %}, "{{ fw.column }}"{% endfor %}),
     preSave: func(*{{ model_name }}) error { return nil },
-    getString: func(r *{{ model_name }}) string { return fmt.Sprintf("{{ model_name }}({{ pk_field.column }}: %v)", r.{{ pk_field.camelcased_attname }}) },
+    getString: func(r *{{ model_name }}) string { return fmt.Sprintf("{{ model_name }}({{ pk_field.column }}: %v)", r.{{ pk_field.camelcased_column }}) },
 }
 
 type {{ model_name }} struct {
     lorm.BaseTransactional
-    {% for fw in all_fields %}{{ fw.camelcased_attname }} {{ fw.gotype }} `json:",omitempty"`
+    {% for fw in all_fields %}{{ fw.camelcased_column }} {{ fw.gotype }} `json:",omitempty"`
     {% endfor %}
 }
 
 func (r *{{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
 func (r *{{ model_name }}) PkCond(args *op.Args) op.Expr { return r.t().Pk().Equal(args.Next(r.Pk())) }
-func (r *{{ model_name }}) GetAllFields() []interface{} { return []interface{}{ {% for fw in all_fields %} &r.{{ fw.camelcased_attname }} {% if not forloop.last %},{% endif %}{% endfor %} } }
+func (r *{{ model_name }}) GetAllFields() []interface{} { return []interface{}{ {% for fw in all_fields %} &r.{{ fw.camelcased_column }} {% if not forloop.last %},{% endif %}{% endfor %} } }
 func (r *{{ model_name }}) String() string  { return r.t().getString(r) }
-func (r *{{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_attname }} != *new({{ pk_field.gotype }}) }
-func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} { lorm.MustHavePk(r); return r.{{ pk_field.camelcased_attname }} }
-func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_attname }} = {{ model_name }}Pk({{ new_pk_func }});{% endif %} }
+func (r *{{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_column }} != *new({{ pk_field.gotype }}) }
+func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} { lorm.MustHavePk(r); return r.{{ pk_field.camelcased_column }} }
+func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_column }} = {{ model_name }}Pk({{ new_pk_func }});{% endif %} }
 func (r *{{ model_name }}) Delete() error { return lorm.DoDelete(r, r.t()) }
 {% if non_pk_fieldslist %}func (r *{{ model_name }}) Reload() error { return lorm.DoReload(r, r.t()) }
 func (r *{{ model_name }}) Save() error { return lorm.DoSaveall(r.t().preSave(r), r, r.t()) }
@@ -71,7 +71,7 @@ func (u *{{ model_name }}Updater) SetTx(tx *lorm.Tx) { u.r.SetTx(tx) }
 func (u *{{ model_name }}Updater) Record() *{{ model_name }} { return u.r }
 func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t()) }
 
-{% for fw in all_fields %}{% if not fw.primary_key %} func (u *{{ model_name }}Updater) Set{{ fw.camelcased_attname|capfirst }}(v {{ fw.gotype }}) { u.r.{{ fw.camelcased_attname|capfirst }} = v; u.Ch(u.r.t().{{ fw.camelcased_attname|capfirst }}(), v) }
+{% for fw in all_fields %}{% if not fw.primary_key %} func (u *{{ model_name }}Updater) Set{{ fw.camelcased_column|capfirst }}(v {{ fw.gotype }}) { u.r.{{ fw.camelcased_column|capfirst }} = v; u.Ch(u.r.t().{{ fw.camelcased_column|capfirst }}(), v) }
 {% endif %}{% endfor %}
 {% endif %}
 type {{ model_name }}List []*{{ model_name }}
@@ -115,9 +115,9 @@ func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
 func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() []{{ field.rel_classname }}Pk {
 	idSet := make({{ field.rel_classname }}PkSet, len(l))
 	for _, r := range l {
-        {% if field.null %}if r.{{ field.camelcased_attname }} != nil {
-            idSet.Add(*r.{{ field.camelcased_attname }})
-        }{% else %}idSet.Add(r.{{ field.camelcased_attname }}){% endif %}
+        {% if field.null %}if r.{{ field.camelcased_column }} != nil {
+            idSet.Add(*r.{{ field.camelcased_column }})
+        }{% else %}idSet.Add(r.{{ field.camelcased_column }}){% endif %}
 	}
 	return idSet.AsList()
 }
@@ -183,34 +183,34 @@ func (f f{{ model_name }}) ForNoKeyUpdate(tx *lorm.Tx) *f{{ model_name }} { f.Se
 
 {% for field in all_fields %}
 {% if field.is_comparable %}
-func (f f{{ model_name }}) {{ field.camelcased_attname }}Gt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Gt(f.Args.Next(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_attname }}Lt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Lt(f.Args.Next(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_attname }}Gte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Gte(f.Args.Next(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_attname }}Lte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Lte(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Gt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Gt(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Lt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Lt(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Gte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Gte(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Lte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Lte(f.Args.Next(v))); return &f }
 {% endif %}{% if field.has_indexes or field.gotype == 'bool' %}
-func (f f{{ model_name }}) {{ field.camelcased_attname }}(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().Equal(f.Args.Next(v))); return &f }
-{% if field.gotype != 'bool' %}func (f f{{ model_name }}) {{ field.camelcased_attname }}Not(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().NotEqual(f.Args.Next(v))); return &f }{% endif %}
+func (f f{{ model_name }}) {{ field.camelcased_column }}(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Equal(f.Args.Next(v))); return &f }
+{% if field.gotype != 'bool' %}func (f f{{ model_name }}) {{ field.camelcased_column }}Not(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().NotEqual(f.Args.Next(v))); return &f }{% endif %}
 {% endif %}
 
 {% if field.has_indexes %}
-func (f f{{ model_name }}) {{ field.camelcased_attname }}In(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
+func (f f{{ model_name }}) {{ field.camelcased_column }}In(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
     if len(l) == 0 {
         f.SetEmpty()
     } else {
-        f.Conds.Add(f.t().{{ field.camelcased_attname }}().Any(f.Args.NextArray(l)))
+        f.Conds.Add(f.t().{{ field.camelcased_column }}().Any(f.Args.NextArray(l)))
     }
     return &f
 }
-func (f f{{ model_name }}) {{ field.camelcased_attname }}NotIn(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
+func (f f{{ model_name }}) {{ field.camelcased_column }}NotIn(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
     if len(l) > 0 {
-        f.Conds.Add(f.t().{{ field.camelcased_attname }}().NotAny(f.Args.NextArray(l)))
+        f.Conds.Add(f.t().{{ field.camelcased_column }}().NotAny(f.Args.NextArray(l)))
     }
     return &f
 }
 {% endif %}
 
-{% if field.null %}func (f f{{ model_name }}) {{ field.camelcased_attname }}IsNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().IsNull()); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_attname }}IsNotNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_attname }}().IsNotNull()); return &f }
+{% if field.null %}func (f f{{ model_name }}) {{ field.camelcased_column }}IsNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().IsNull()); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}IsNotNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().IsNotNull()); return &f }
 {% endif %}
 
 {% endfor %}

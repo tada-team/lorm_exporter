@@ -63,7 +63,6 @@ class FieldWrapper:
         if isinstance(f, ForeignKey):
             self.is_same_app_fk = f.model._meta.app_label in labels
             self.rel_classname = f.related_model.__name__
-            self.camelcased_attname_without_id = self.camelcased_attname[:-2]
             self.camelcased_column = to_camelcase(f.column)
             self.one_to_one = f.one_to_one
 
