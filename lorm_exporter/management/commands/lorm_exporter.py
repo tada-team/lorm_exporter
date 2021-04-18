@@ -63,8 +63,8 @@ class FieldWrapper:
         if isinstance(f, ForeignKey):
             self.is_same_app_fk = f.model._meta.app_label in labels
             self.rel_classname = f.related_model.__name__
-            self.camelcased_column = to_camelcase(f.column)
             self.one_to_one = f.one_to_one
+        self.camelcased_column = to_camelcase(f.column)
 
         t, _ = go_type(f, produce_pk=False)
         self.native_type = t
