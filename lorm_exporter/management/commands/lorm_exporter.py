@@ -226,10 +226,10 @@ def go_type(field, *, produce_pk=True):
             t = 'pq.Int64Array'
         elif isinstance(field.base_field, CharField):
             t = 'pq.StringArray'
+        elif isinstance(f, UUIDField):
+            t = 'string'
         else:
-            assert False, field.base_field
-        #     sub_t, type_import = go_type(field.base_field)
-        #     t = '[]' + sub_t
+            raise Exception(f'base field not found for {f}')
     elif isinstance(field, JSONField):
         t = '[]byte'
     elif isinstance(field, BigIntegerField):
