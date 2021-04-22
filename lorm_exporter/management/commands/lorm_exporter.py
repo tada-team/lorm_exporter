@@ -227,7 +227,7 @@ def go_type(field, *, produce_pk=True):
         elif isinstance(field.base_field, CharField):
             t = 'pq.StringArray'
         elif isinstance(field.base_field, UUIDField):
-            t = 'string'
+            t = '[]string'
         else:
             raise Exception(f'base field not found for {field.base_field}')
     elif isinstance(field, JSONField):
