@@ -224,7 +224,7 @@ def go_type(field, *, produce_pk=True):
     elif isinstance(field, ArrayField):
         if isinstance(field.base_field, BigIntegerField):
             t = 'pq.Int64Array'
-        elif isinstance(field.base_field, CharField, UUIDField):
+        elif isinstance(field.base_field, (CharField, UUIDField)):
             t = 'pq.StringArray'
         else:
             raise Exception(f'base field not found for {field.base_field}')
