@@ -2,7 +2,7 @@ type {{ pk_field.gotype }} {{ pk_field.native_type }}
 
 type t{{ model_name }} struct {
 	lorm.BaseTable
-    preSave func(r *{{ model_name }}) error
+    preSave, postSave, func(r *{{ model_name }}) error
     getString func(r *{{ model_name }}) string
 }
 {% for fw in all_fields %}func (t t{{ model_name }}) {{ fw.camelcased_column|capfirst }}() op.Column { return t.Column("{{ fw.column }}") }
@@ -39,7 +39,6 @@ func (t t{{ model_name }}) scanPks(tx *lorm.Tx, query op.Query, args op.Args) (p
 
 var {{ model_name }}Table = t{{ model_name }} {
     BaseTable: lorm.NewBaseTable("{{ table_name }}", "{{ model_name }}"{% for fw in all_fields %}, "{{ fw.column }}"{% endfor %}),
-    preSave: func(*{{ model_name }}) error { return nil },
     getString: func(r *{{ model_name }}) string { return fmt.Sprintf("{{ model_name }}({{ pk_field.column }}: %v)", r.{{ pk_field.camelcased_column }}) },
 }
 
@@ -50,15 +49,22 @@ type {{ model_name }} struct {
 }
 
 func (r *{{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
+func (r *{{ model_name }}) fn(f func(*{{ model_name }}) error) func() error {
+	if f == nil {
+		return func() error { return nil }
+	}
+	return func() error { return f(r) }
+}
+
+func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} { lorm.MustHavePk(r); return r.{{ pk_field.camelcased_column }} }
 func (r *{{ model_name }}) PkCond(args *op.Args) op.Expr { return r.t().Pk().Equal(args.Next(r.Pk())) }
 func (r *{{ model_name }}) GetAllFields() []interface{} { return []interface{}{ {% for fw in all_fields %} &r.{{ fw.camelcased_column }} {% if not forloop.last %},{% endif %}{% endfor %} } }
 func (r *{{ model_name }}) String() string  { return r.t().getString(r) }
 func (r *{{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_column }} != *new({{ pk_field.gotype }}) }
-func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} { lorm.MustHavePk(r); return r.{{ pk_field.camelcased_column }} }
 func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_column }} = {{ model_name }}Pk({{ new_pk_func }});{% endif %} }
 func (r *{{ model_name }}) Delete() error { return lorm.DoDelete(r, r.t()) }
 {% if non_pk_fieldslist %}func (r *{{ model_name }}) Reload() error { return lorm.DoReload(r, r.t()) }
-func (r *{{ model_name }}) Save() error { return lorm.DoSaveall(r.t().preSave(r), r, r.t()) }
+func (r *{{ model_name }}) Save() error { return lorm.DoSave(r, r.t(), r.fn(r.t().preSave), r.fn(r.t().postSave)) }
 func (r *{{ model_name }}) Updater() {{ model_name }}Updater { return {{ model_name }}Updater{r: r, BaseUpdater: lorm.NewUpdater()} }
 
 type {{ model_name }}Updater struct {
@@ -69,7 +75,7 @@ type {{ model_name }}Updater struct {
 func (u *{{ model_name }}Updater) Tx() *lorm.Tx { return u.r.Tx() }
 func (u *{{ model_name }}Updater) SetTx(tx *lorm.Tx) { u.r.SetTx(tx) }
 func (u *{{ model_name }}Updater) Record() *{{ model_name }} { return u.r }
-func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t()) }
+func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t(), u.r.fn(u.r.t().postSave)) }
 
 {% for fw in all_fields %}{% if not fw.primary_key %} func (u *{{ model_name }}Updater) Set{{ fw.camelcased_column|capfirst }}(v {{ fw.gotype }}) { u.r.{{ fw.camelcased_column|capfirst }} = v; u.Ch(u.r.t().{{ fw.camelcased_column|capfirst }}(), v) }
 {% endif %}{% endfor %}
