@@ -24,9 +24,7 @@ func (c *Simple{{ model_name }}Cache) {{ model_name }}(key {{ model_name }}Pk) *
         return res
     }
     lorm.CacheUsed("Simple{{ model_name }}Cache.{{ model_name }}()")
-    l := {{ model_name }}Table.Filter().{{ pk_field.camelcased_column|capfirst }}(key).MustList()
-    c.init(len(l))
-    c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
+    c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}({{ model_name }}Table.Filter().{{ pk_field.camelcased_column|capfirst }}(key).MustList())
     return c.get{{ model_name }}(key)
 }
 
@@ -57,9 +55,7 @@ func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name
                 return res
             }
             lorm.CacheUsed("Simple{{ model_name }}Cache.{{ model_name }}By{{ field.camelcased_column }}()")
-            l := {{ model_name }}Table.Filter().{{ field.camelcased_column }}(key).MustList()
-            c.init(len(l))
-            c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l)
+            c.Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}({{ model_name }}Table.Filter().{{ field.camelcased_column }}(key).MustList())
             return c.get{{ model_name }}By{{ field.camelcased_column }}(key)
         }
 
