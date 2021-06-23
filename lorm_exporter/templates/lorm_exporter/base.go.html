@@ -2,7 +2,7 @@ type {{ pk_field.gotype }} {{ pk_field.native_type }}
 
 type t{{ model_name }} struct {
 	lorm.BaseTable
-    preSave, postSave, func(r *{{ model_name }}) error
+    preSave, postSave func(r *{{ model_name }}) error
     getString func(r *{{ model_name }}) string
 }
 {% for fw in all_fields %}func (t t{{ model_name }}) {{ fw.camelcased_column|capfirst }}() op.Column { return t.Column("{{ fw.column }}") }
