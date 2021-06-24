@@ -2,7 +2,7 @@ type {{ pk_field.gotype }} {{ pk_field.native_type }}
 
 type t{{ model_name }} struct {
 	lorm.BaseTable
-    preSave, postSave func(r *{{ model_name }}) error
+    preSave, postSave []func(r *{{ model_name }}) error
     getString func(r *{{ model_name }}) string
 }
 {% for fw in all_fields %}func (t t{{ model_name }}) {{ fw.camelcased_column|capfirst }}() op.Column { return t.Column("{{ fw.column }}") }
@@ -49,7 +49,17 @@ type {{ model_name }} struct {
 }
 
 func (r *{{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
-func (r *{{ model_name }}) fn(f func(*{{ model_name }}) error) func() error { return lorm.DoFn(f == nil, func() error { return f(r) }) }
+func (r *{{ model_name }}) apply(fns ...func(*{{ model_name }}) error) error {
+	if tx := r.Tx(); tx != nil {
+		return tx.OnSuccess(func() error { return r.apply(fns...) })
+	}
+	for _, fn := range fns {
+		if err := fn(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (r *{{ model_name }}) Pk() {{ pk_field.gotype }} { lorm.MustHavePk(r); return r.{{ pk_field.camelcased_column }} }
 func (r *{{ model_name }}) PkCond(args *op.Args) op.Expr { return r.t().Pk().Equal(args.Next(r.Pk())) }
@@ -59,7 +69,9 @@ func (r *{{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_column
 func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_column }} = {{ model_name }}Pk({{ new_pk_func }});{% endif %} }
 func (r *{{ model_name }}) Delete() error { return lorm.DoDelete(r, r.t()) }
 {% if non_pk_fieldslist %}func (r *{{ model_name }}) Reload() error { return lorm.DoReload(r, r.t()) }
-func (r *{{ model_name }}) Save() error { return lorm.DoSave(r, r.t(), r.fn(r.t().preSave), r.fn(r.t().postSave)) }
+func (r *{{ model_name }}) PreSave() error  { return r.apply(r.t().preSave...) }
+func (r *{{ model_name }}) PostSave() error { return r.apply(r.t().postSave...) }
+func (r *{{ model_name }}) Save() error     { return lorm.DoSave(r, r.t()) }
 func (r *{{ model_name }}) Updater() {{ model_name }}Updater { return {{ model_name }}Updater{r: r, BaseUpdater: lorm.NewUpdater()} }
 
 type {{ model_name }}Updater struct {
