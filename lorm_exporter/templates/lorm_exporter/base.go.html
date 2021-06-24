@@ -49,10 +49,7 @@ type {{ model_name }} struct {
 }
 
 func (r *{{ model_name }}) t() *t{{ model_name }} { return &{{ model_name }}Table }
-func (r *{{ model_name }}) apply(fns ...func(*{{ model_name }}) error) error {
-	if tx := r.Tx(); tx != nil {
-		return tx.OnSuccess(func() error { return r.apply(fns...) })
-	}
+func (r *{{ model_name }}) a(fns []func(*{{ model_name }}) error) error {
 	for _, fn := range fns {
 		if err := fn(r); err != nil {
 			return err
@@ -69,9 +66,9 @@ func (r *{{ model_name }}) HasPk() bool { return r.{{ pk_field.camelcased_column
 func (r *{{ model_name }}) NewPk() { {% if new_pk_func %}r.{{ pk_field.camelcased_column }} = {{ model_name }}Pk({{ new_pk_func }});{% endif %} }
 func (r *{{ model_name }}) Delete() error { return lorm.DoDelete(r, r.t()) }
 {% if non_pk_fieldslist %}func (r *{{ model_name }}) Reload() error { return lorm.DoReload(r, r.t()) }
-func (r *{{ model_name }}) PreSave() error  { return r.apply(r.t().preSave...) }
-func (r *{{ model_name }}) PostSave() error { return r.apply(r.t().postSave...) }
 func (r *{{ model_name }}) Save() error     { return lorm.DoSave(r, r.t()) }
+func (r *{{ model_name }}) PreSave() error  { return r.a(r.t().preSave) }
+func (r *{{ model_name }}) PostSave() error { return lorm.DoInTx(r.a(r.t().postSave)) }
 func (r *{{ model_name }}) Updater() {{ model_name }}Updater { return {{ model_name }}Updater{r: r, BaseUpdater: lorm.NewUpdater()} }
 
 type {{ model_name }}Updater struct {
