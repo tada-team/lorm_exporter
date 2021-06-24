@@ -82,7 +82,7 @@ type {{ model_name }}Updater struct {
 func (u *{{ model_name }}Updater) Tx() *lorm.Tx { return u.r.Tx() }
 func (u *{{ model_name }}Updater) SetTx(tx *lorm.Tx) { u.r.SetTx(tx) }
 func (u *{{ model_name }}Updater) Record() *{{ model_name }} { return u.r }
-func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t(), u.r.fn(u.r.t().postSave)) }
+func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t()) }
 
 {% for fw in all_fields %}{% if not fw.primary_key %} func (u *{{ model_name }}Updater) Set{{ fw.camelcased_column|capfirst }}(v {{ fw.gotype }}) { u.r.{{ fw.camelcased_column|capfirst }} = v; u.Ch(u.r.t().{{ fw.camelcased_column|capfirst }}(), v) }
 {% endif %}{% endfor %}
