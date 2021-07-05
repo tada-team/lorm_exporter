@@ -86,6 +86,8 @@ func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t()) }
 type {{ model_name }}List []*{{ model_name }}
 
 func (l {{ model_name }}List) t() *t{{ model_name }} { return &{{ model_name }}Table }
+func (l {{ model_name }}List) Tx() *lorm.Tx { return lorm.DoListTx(l) }
+func (l {{ model_name }}List) SetTx(tx *lorm.Tx) { lorm.DoSetListTx(tx, l) }
 
 func (l {{ model_name }}List) Pks() []{{ model_name }}Pk {
     pks := make([]{{ model_name }}Pk, len(l))
@@ -106,18 +108,12 @@ func (l {{ model_name }}List) Delete() error {
 	return nil
 }
 
-func (l {{ model_name }}List) Tx() *lorm.Tx {
-	byTx := make(map[*lorm.Tx]struct{}, 1)
-	for _, r := range l {
-		byTx[r.Tx()] = struct{}{}
-	}
-	return lorm.ChooseOneTx(byTx)
-}
-
-func (l {{ model_name }}List) SetTx(tx *lorm.Tx) {
-	for _, r := range l {
-		r.SetTx(tx)
-	}
+func (l {{ model_name }}List) Records() []lorm.Record {
+    res := make([]lorm.Record, len(l))
+    for i, r := range l {
+        res[i] = r
+    }
+    return res
 }
 
 {% for field in all_fields %}{% if field.is_same_app_fk %}
