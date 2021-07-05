@@ -188,34 +188,22 @@ func (f f{{ model_name }}) ForNoKeyUpdate(tx *lorm.Tx) *f{{ model_name }} { f.Se
 
 {% for field in all_fields %}
 {% if field.is_comparable %}
-func (f f{{ model_name }}) {{ field.camelcased_column }}Gt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Gt(f.Args.Next(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}Lt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Lt(f.Args.Next(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}Gte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Gte(f.Args.Next(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}Lte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Lte(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Gt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Gt(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Lt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Lt(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Gte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Gte(f.Args.Next(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Lte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Lte(f.Args.Next(v))); return &f }
 {% endif %}{% if field.has_indexes or field.gotype == 'bool' %}
-func (f f{{ model_name }}) {{ field.camelcased_column }}(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().Equal(f.Args.Next(v))); return &f }
-{% if field.gotype != 'bool' %}func (f f{{ model_name }}) {{ field.camelcased_column }}Not(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().NotEqual(f.Args.Next(v))); return &f }{% endif %}
+func (f f{{ model_name }}) {{ field.camelcased_column }}(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Equal(f.Args.Next(v))); return &f }
+{% if field.gotype != 'bool' %}func (f f{{ model_name }}) {{ field.camelcased_column }}Not(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().NotEqual(f.Args.Next(v))); return &f }{% endif %}
 {% endif %}
 
 {% if field.has_indexes %}
-func (f f{{ model_name }}) {{ field.camelcased_column }}In(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
-    if len(l) == 0 {
-        f.SetEmpty()
-    } else {
-        f.Conds.Add(f.t().{{ field.camelcased_column }}().Any(f.Args.NextArray(l)))
-    }
-    return &f
-}
-func (f f{{ model_name }}) {{ field.camelcased_column }}NotIn(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
-    if len(l) > 0 {
-        f.Conds.Add(f.t().{{ field.camelcased_column }}().NotAny(f.Args.NextArray(l)))
-    }
-    return &f
-}
+func (f f{{ model_name }}) {{ field.camelcased_column }}In(l []{{ field.gotype_nopointer }}) *f{{ model_name }} { f.EC(len(l) == 0, f.t().{{ field.camelcased_column }}().Any(f.Args.NextArray(l))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}NotIn(l []{{ field.gotype_nopointer }}) *f{{ model_name }} { f.MC(len(l) > 0, f.t().{{ field.camelcased_column }}().NotAny(f.Args.NextArray(l))); return &f }
 {% endif %}
 
-{% if field.null %}func (f f{{ model_name }}) {{ field.camelcased_column }}IsNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().IsNull()); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}IsNotNull() *f{{ model_name }} { f.Conds.Add(f.t().{{ field.camelcased_column }}().IsNotNull()); return &f }
+{% if field.null %}func (f f{{ model_name }}) {{ field.camelcased_column }}IsNull() *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().IsNull()); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}IsNotNull() *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().IsNotNull()); return &f }
 {% endif %}
 
 {% endfor %}
