@@ -23,9 +23,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('args', metavar=self.label, nargs='+')
         parser.add_argument('--package', default='models')
+        parser.add_argument('--nocache', action='store_true', default=False)
 
     def handle(self, *labels, **options):
-        print('\n'.join(go_flush(labels, package=options['package'])))
+        print('\n'.join(go_flush(
+            labels,
+            package=options['package'],
+            nocache=options['nocache'],
+        )))
 
 
 arrtypes = {
@@ -114,7 +119,7 @@ class FieldWrapper:
         self.goarrtype = arrtypes.get(self.gotype_nopointer, '')
 
 
-def go_flush(labels, package):
+def go_flush(labels, package, nocache):
     result = []
 
     imports = {
@@ -159,6 +164,7 @@ def go_flush(labels, package):
             model_name = m.__name__
             model_name = to_camelcase(model_name)
             s = render_to_string('lorm_exporter/model.go.html', {
+                'nocache': nocache,
                 'new_pk_func': new_pk_func,
                 'model_name': model_name,
                 'table_name': meta.db_table,

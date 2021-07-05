@@ -1,5 +1,4 @@
 // {{ model_name }}
 
 {% include "lorm_exporter/base.go.html" %}
-
-{% include "lorm_exporter/cache.go.html" %}
+{% if not nocache %}{% include "lorm_exporter/cache.go.html" %}{% endif %}
