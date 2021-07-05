@@ -198,8 +198,20 @@ func (f f{{ model_name }}) {{ field.camelcased_column }}(v {{ field.gotype_nopoi
 {% endif %}
 
 {% if field.has_indexes %}
-func (f f{{ model_name }}) {{ field.camelcased_column }}In(l []{{ field.gotype_nopointer }}) *f{{ model_name }} { f.EC(len(l) == 0, f.t().{{ field.camelcased_column }}().Any(f.Args.NextArray(l))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}NotIn(l []{{ field.gotype_nopointer }}) *f{{ model_name }} { f.MC(len(l) > 0, f.t().{{ field.camelcased_column }}().NotAny(f.Args.NextArray(l))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}In(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
+    if len(l) == 0 {
+        f.SetEmpty()
+    } else {
+        f.C(f.t().{{ field.camelcased_column }}().Any(f.Args.NextArray(l)))
+    }
+    return &f
+}
+func (f f{{ model_name }}) {{ field.camelcased_column }}NotIn(l []{{ field.gotype_nopointer }}) *f{{ model_name }} {
+    if len(l) > 0 {
+        f.C(f.t().{{ field.camelcased_column }}().NotAny(f.Args.NextArray(l)))
+    }
+    return &f
+}
 {% endif %}
 
 {% if field.null %}func (f f{{ model_name }}) {{ field.camelcased_column }}IsNull() *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().IsNull()); return &f }
