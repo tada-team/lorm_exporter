@@ -188,13 +188,13 @@ func (f f{{ model_name }}) ForNoKeyUpdate(tx *lorm.Tx) *f{{ model_name }} { f.Se
 
 {% for field in all_fields %}
 {% if field.is_comparable %}
-func (f f{{ model_name }}) {{ field.camelcased_column }}Gt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Gt(f.NA(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}Lt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Lt(f.NA(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}Gte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Gte(f.NA(v))); return &f }
-func (f f{{ model_name }}) {{ field.camelcased_column }}Lte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Lte(f.NA(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Gt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Gt(f.N(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Lt(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Lt(f.N(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Gte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Gte(f.N(v))); return &f }
+func (f f{{ model_name }}) {{ field.camelcased_column }}Lte(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Lte(f.N(v))); return &f }
 {% endif %}{% if field.has_indexes or field.gotype == 'bool' %}
-func (f f{{ model_name }}) {{ field.camelcased_column }}(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Equal(f.NA(v))); return &f }
-{% if field.gotype != 'bool' %}func (f f{{ model_name }}) {{ field.camelcased_column }}Not(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().NotEqual(f.NA(v))); return &f }{% endif %}
+func (f f{{ model_name }}) {{ field.camelcased_column }}(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().Equal(f.N(v))); return &f }
+{% if field.gotype != 'bool' %}func (f f{{ model_name }}) {{ field.camelcased_column }}Not(v {{ field.gotype_nopointer }}) *f{{ model_name }} { f.C(f.t().{{ field.camelcased_column }}().NotEqual(f.N(v))); return &f }{% endif %}
 {% endif %}
 
 {% if field.has_indexes %}
