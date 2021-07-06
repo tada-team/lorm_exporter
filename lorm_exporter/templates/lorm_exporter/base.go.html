@@ -22,7 +22,7 @@ func (t t{{ model_name }}) scanList(tx *lorm.Tx, query op.Query, args op.Args) (
 		l = append(l, r)
 		return nil
 	})
-	return l, err
+	return
 }
 
 func (t t{{ model_name }}) scanPks(tx *lorm.Tx, query op.Query, args op.Args) (pks []{{ model_name }}Pk, err error) {
@@ -34,7 +34,7 @@ func (t t{{ model_name }}) scanPks(tx *lorm.Tx, query op.Query, args op.Args) (p
 		pks = append(pks, pk)
 		return nil
 	})
-	return pks, err
+	return
 }
 
 var {{ model_name }}Table = t{{ model_name }} {
@@ -163,7 +163,7 @@ func (f f{{ model_name }}) MustList() {{ model_name }}List {
 
 func (f *f{{ model_name }}) List() (l {{ model_name }}List, err error) {
     if f.IsEmpty() {
-        return l, nil
+        return
     }
     query := lorm.CachedSelect(f.t()).Where(f.Conds).Lock(f.GetLock()).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
 	return f.t().scanList(f.Tx(), query, f.Args)
@@ -171,7 +171,7 @@ func (f *f{{ model_name }}) List() (l {{ model_name }}List, err error) {
 
 func (f *f{{ model_name }}) PkList() []{{ pk_field.gotype }} {
     if f.IsEmpty() {
-        return []{{ pk_field.gotype }}{}
+        return nil
     }
     query := op.Select(f.t().Pk()).From(f.t()).Where(f.Conds).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
     pks, err := f.t().scanPks(f.Tx(), query, f.Args)
@@ -181,9 +181,9 @@ func (f *f{{ model_name }}) PkList() []{{ pk_field.gotype }} {
     return pks
 }
 
-func (f f{{ model_name }}) OrderBy(v op.Expr) *f{{ model_name }}        { f.SetOrderBy(v); return &f }
-func (f f{{ model_name }}) Limit(v int) *f{{ model_name }}              { f.SetLimit(v); return &f }
-func (f f{{ model_name }}) ForUpdate(tx *lorm.Tx) *f{{ model_name }}      { f.SetLock(tx, op.ForUpdate); return &f }
+func (f f{{ model_name }}) OrderBy(v op.Expr) *f{{ model_name }} { f.SetOrderBy(v); return &f }
+func (f f{{ model_name }}) Limit(v int) *f{{ model_name }} { f.SetLimit(v); return &f }
+func (f f{{ model_name }}) ForUpdate(tx *lorm.Tx) *f{{ model_name }} { f.SetLock(tx, op.ForUpdate); return &f }
 func (f f{{ model_name }}) ForNoKeyUpdate(tx *lorm.Tx) *f{{ model_name }} { f.SetLock(tx, op.ForNoKeyUpdate); return &f }
 
 {% for field in all_fields %}
