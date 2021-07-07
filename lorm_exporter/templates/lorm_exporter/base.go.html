@@ -12,8 +12,8 @@ func (t t{{ model_name }}) Filter() *f{{ model_name }} { return new(f{{ model_na
 func (t t{{ model_name }}) MustGet(pk {{ model_name }}Pk) *{{ model_name }} { return t.Filter().{{ pk_field.camelcased_column }}(pk).MustGet() }
 func (t t{{ model_name }}) As(v string) t{{ model_name }} { t.SetAlias(v); return t }
 
-func (t t{{ model_name }}) scanList(tx *lorm.Tx, query op.Query, args op.Args) (l {{ model_name }}List, err error) {
-	err = lorm.TxQuery(tx, query, args, func(rows *sql.Rows) error {
+func (t t{{ model_name }}) scanList(tx *lorm.Tx, q op.Query, args op.Args) (l {{ model_name }}List, err error) {
+	err = lorm.TxQuery(tx, q, args, func(rows *sql.Rows) error {
 		r := new({{ model_name }})
 		if err := rows.Scan(r.GetAllFields()...); err != nil {
 			return err
@@ -25,8 +25,8 @@ func (t t{{ model_name }}) scanList(tx *lorm.Tx, query op.Query, args op.Args) (
 	return
 }
 
-func (t t{{ model_name }}) scanPks(tx *lorm.Tx, query op.Query, args op.Args) (pks []{{ model_name }}Pk, err error) {
-	err = lorm.TxQuery(tx, query, args, func(rows *sql.Rows) error {
+func (t t{{ model_name }}) scanPks(tx *lorm.Tx, q op.Query, args op.Args) (pks []{{ model_name }}Pk, err error) {
+	err = lorm.TxQuery(tx, q, args, func(rows *sql.Rows) error {
 		var pk {{ model_name }}Pk
 		if err := rows.Scan(&pk); err != nil {
 			return err
@@ -100,8 +100,8 @@ func (l {{ model_name }}List) Pks() []{{ model_name }}Pk {
 func (l {{ model_name }}List) Delete() error {
     if len(l) > 0 {
         args := op.NewArgs()
-        query := op.Delete(l.t()).Where(l.t().Pk().Any(args.NextArray(l.Pks())))
-        if _, err := lorm.TxExec(l.Tx(), query, args); err != nil {
+        q := op.Delete(l.t()).Where(l.t().Pk().Any(args.NextArray(l.Pks())))
+        if _, err := lorm.TxExec(l.Tx(), q, args); err != nil {
             return errors.WithStack(err)
         }
     }
@@ -118,13 +118,13 @@ func (l {{ model_name }}List) Records() []lorm.Record {
 
 {% for field in all_fields %}{% if field.is_same_app_fk %}
 func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() []{{ field.rel_classname }}Pk {
-	pkSet := make({{ field.rel_classname }}PkSet, len(l))
+	s := make({{ field.rel_classname }}PkSet, len(l))
 	for _, r := range l {
         {% if field.null %}if r.{{ field.camelcased_column }} != nil {
-            pkSet.Add(*r.{{ field.camelcased_column }})
-        }{% else %}pkSet.Add(r.{{ field.camelcased_column }}){% endif %}
+            s.Add(*r.{{ field.camelcased_column }})
+        }{% else %}s.Add(r.{{ field.camelcased_column }}){% endif %}
 	}
-	return pkSet.AsList()
+	return s.AsList()
 }
 {% endif %}{% endfor %}
 
@@ -142,8 +142,8 @@ func (f *f{{ model_name }}) MustGet() *{{ model_name }} {
 
 func (f *f{{ model_name }}) Get() (*{{ model_name }}, error) {
 	r := new({{ model_name }})
-	found, err := lorm.DoGet(f, r, f.t())
-	if !found {
+	ok, err := lorm.DoGet(f, r, f.t())
+	if !ok {
 		r = nil
 	}
 	return r, err
@@ -165,18 +165,18 @@ func (f *f{{ model_name }}) List() (l {{ model_name }}List, err error) {
     if f.IsEmpty() {
         return
     }
-    query := lorm.CachedSelect(f.t()).Where(f.Conds).Lock(f.GetLock()).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
-	return f.t().scanList(f.Tx(), query, f.Args)
+    q := lorm.CachedSelect(f.t()).Where(f.Conds).Lock(f.GetLock()).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
+	return f.t().scanList(f.Tx(), q, f.Args)
 }
 
 func (f *f{{ model_name }}) PkList() []{{ pk_field.gotype }} {
     if f.IsEmpty() {
         return nil
     }
-    query := op.Select(f.t().Pk()).From(f.t()).Where(f.Conds).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
-    pks, err := f.t().scanPks(f.Tx(), query, f.Args)
+    q := op.Select(f.t().Pk()).From(f.t()).Where(f.Conds).OrderBy(f.GetOrderBy()).Limit(f.GetLimit())
+    pks, err := f.t().scanPks(f.Tx(), q, f.Args)
     if err != nil {
-        log.Panicln(errors.Wrapf(err, "%s.Pks() fail on %s and %v", f.t(), query, f.Args))
+        log.Panicln(errors.Wrapf(err, "%s.Pks() fail on %s and %v", f.t(), q, f.Args))
     }
     return pks
 }
