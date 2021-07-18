@@ -43,7 +43,7 @@ var {{ model_name }}Table = t{{ model_name }} {
 }
 
 type {{ model_name }} struct {
-    lorm.BaseTransactional
+    lorm.BaseRecord
     {% for fw in all_fields %}{{ fw.camelcased_column }} {{ fw.gotype }} `json:",omitempty"`
     {% endfor %}
 }
@@ -101,7 +101,7 @@ func (l {{ model_name }}List) Delete() error {
     if len(l) > 0 {
         args := op.NewArgs()
         q := op.Delete(l.t()).Where(l.t().Pk().Any(args.NextArray(l.Pks())))
-        if _, err := lorm.TxExec(l.Tx(), q, args); err != nil {
+        if _, err := lorm.TxExec(l.Tx(), nil, q, args); err != nil {
             return errors.WithStack(err)
         }
     }
