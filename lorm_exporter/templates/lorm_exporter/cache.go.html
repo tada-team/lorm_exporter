@@ -35,9 +35,9 @@ func (c *Simple{{ model_name }}Cache) get{{ model_name }}(key {{ model_name }}Pk
 }
 
 func (c *Simple{{ model_name }}Cache) Update{{ model_name }}{% if not model_name|slice:"-1:" == "s" %}s{% endif %}(l {{ model_name }}List) {
-    c.init(len(l))
     c.Lock()
     defer c.Unlock()
+    c.init(len(l))
 	for _, v := range l {
 		c.byPk[v.Pk()] = v{% for field in all_fields %}{% if field.one_to_one %}{% if field.is_pointer %}
         if v.{{ field.camelcased_column }} != nil {
