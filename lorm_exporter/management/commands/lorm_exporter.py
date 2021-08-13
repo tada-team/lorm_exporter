@@ -149,8 +149,7 @@ def go_flush(labels, package, nocache):
                     if getattr(f, 'primary_key', None):
                         pk_field = fw
                         if isinstance(f, UUIDField):
-                            new_pk_func = 'uuid.New().String()'
-                            imports.add('github.com/google/uuid')
+                            new_pk_func = 'lorm.UUID()'
                     fields.append(fw)
             assert pk_field
 
