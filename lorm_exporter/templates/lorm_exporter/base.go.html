@@ -91,7 +91,7 @@ func (l {{ model_name }}List) t() *t{{ model_name }} { return &{{ model_name }}T
 func (l {{ model_name }}List) Tx() *lorm.Tx { return lorm.DoListTx(l) }
 func (l {{ model_name }}List) SetTx(tx *lorm.Tx) { lorm.DoSetListTx(tx, l) }
 
-func (l {{ model_name }}List) Pks() []{{ model_name }}Pk { return lorm.DoPks[{{ model_name }}Pk](l) }}
+func (l {{ model_name }}List) Pks() []{{ model_name }}Pk { return lorm.DoPks[{{ model_name }}Pk](l) }
 
 func (l {{ model_name }}List) Delete() error {
     if len(l) > 0 {
