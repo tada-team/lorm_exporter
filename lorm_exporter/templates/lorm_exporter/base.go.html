@@ -81,6 +81,7 @@ func (u *{{ model_name }}Updater) SetTx(tx *lorm.Tx) { u.r.SetTx(tx) }
 func (u *{{ model_name }}Updater) Record() *{{ model_name }} { return u.r }
 func (u *{{ model_name }}Updater) Save() error { return u.DoSave(u.r, u.r.t()) }
 
+
 {% for fw in all_fields %}{% if not fw.primary_key %} func (u *{{ model_name }}Updater) Set{{ fw.camelcased_column|capfirst }}(v {{ fw.gotype }}) { u.r.{{ fw.camelcased_column|capfirst }} = v; u.Ch(u.r.t().{{ fw.camelcased_column|capfirst }}(), v) }
 {% endif %}{% endfor %}
 {% endif %}
@@ -90,13 +91,7 @@ func (l {{ model_name }}List) t() *t{{ model_name }} { return &{{ model_name }}T
 func (l {{ model_name }}List) Tx() *lorm.Tx { return lorm.DoListTx(l) }
 func (l {{ model_name }}List) SetTx(tx *lorm.Tx) { lorm.DoSetListTx(tx, l) }
 
-func (l {{ model_name }}List) Pks() []{{ model_name }}Pk {
-    pks := make([]{{ model_name }}Pk, len(l))
-    for i, r := range l {
-        pks[i] = r.Pk()
-    }
-    return pks
-}
+func (l {{ model_name }}List) Pks() []{{ model_name }}Pk { return lorm.DoPks[{{ model_name }}Pk](l) }}
 
 func (l {{ model_name }}List) Delete() error {
     if len(l) > 0 {
@@ -119,7 +114,7 @@ func (l {{ model_name }}List) Records() []lorm.Record {
 
 {% for field in all_fields %}{% if field.is_same_app_fk %}
 func (l {{ model_name }}List) Uniq{{ field.camelcased_column }}s() []{{ field.rel_classname }}Pk {
-	s := make({{ field.rel_classname }}PkSet, len(l))
+	s := make(lorm.Set[{{ field.rel_classname }}Pk], len(l))
 	for _, r := range l {
         {% if field.null %}if r.{{ field.camelcased_column }} != nil {
             s.Add(*r.{{ field.camelcased_column }})
@@ -220,15 +215,3 @@ func (f f{{ model_name }}) {{ field.camelcased_column }}IsNotNull() *f{{ model_n
 {% endif %}
 
 {% endfor %}
-
-type {{ model_name }}PkSet map[{{ model_name }}Pk]struct{}
-
-func (s {{ model_name }}PkSet) Add(pk {{ model_name }}Pk)           { s[pk] = struct{}{} }
-func (s {{ model_name }}PkSet) Contains(pk {{ model_name }}Pk) bool { _, ok := s[pk]; return ok }
-func (s {{ model_name }}PkSet) AsList() []{{ model_name }}Pk {
-	pks := make([]{{ model_name }}Pk, 0, len(s))
-	for pk := range s {
-		pks = append(pks, pk)
-	}
-	return pks
-}
